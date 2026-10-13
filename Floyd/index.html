@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Floyd · Caminos Mínimos</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="app">
+  <header>
+    <div class="brand">
+      <h1>Constructor de Redes · Floyd-Warshall</h1>
+      <span class="tag">Caminos mínimos entre todos los pares de una red dirigida</span>
+    </div>
+    <div class="header-right">
+      <a class="header-link" href="pruebas.html" target="_blank" title="Abrir las pruebas automáticas del algoritmo">✓ Pruebas del algoritmo</a>
+      <div class="header-course">Investigación de Operaciones · Ing. de Sistemas y Computación — UTP<br>Docente: Bibiana Patricia Arias Villada · <span id="cartouche-date"></span></div>
+    </div>
+  </header>
+
+  <!-- ================= PANEL IZQUIERDO: CONSTRUCCIÓN ================= -->
+  <aside class="left">
+    <div class="block">
+      <h2>Ingresar nodos</h2>
+      <div class="inline-form">
+        <input type="text" id="node-name-input" maxlength="6" placeholder="Nombre (ej. A)" aria-label="Nombre del nodo">
+        <button class="primary" id="btn-add-node-form"><span class="tool-icon">+</span> Agregar</button>
+      </div>
+      <div class="form-error" id="node-form-error"></div>
+      <div class="hint-line">El nodo se ubica automáticamente; luego puedes arrastrarlo.</div>
+    </div>
+
+    <div class="block">
+      <h2>Registrar arcos</h2>
+      <div class="arc-form">
+        <div>
+          <label class="field-label" for="arc-from">Origen</label>
+          <select id="arc-from"></select>
+        </div>
+        <span class="arc-arrow">→</span>
+        <div>
+          <label class="field-label" for="arc-to">Destino</label>
+          <select id="arc-to"></select>
+        </div>
+        <div>
+          <label class="field-label" for="arc-weight">Peso</label>
+          <input type="number" id="arc-weight" step="any" min="0" placeholder="&gt; 0">
+        </div>
+      </div>
+      <button class="primary full" id="btn-add-arc"><span class="tool-icon">→</span> Registrar arco</button>
+      <div class="form-error" id="arc-form-error"></div>
+      <div class="hint-line">Cada arco tiene sentido: A → B no implica B → A. Solo se admiten pesos positivos.</div>
+    </div>
+
+    <div class="block">
+      <h2>Herramientas del lienzo</h2>
+      <div class="tool-row">
+        <button id="mode-select" class="active" title="Seleccionar, mover, editar o eliminar (tecla 1)"><span class="tool-icon">▤</span> Seleccionar / Mover <kbd>1</kbd></button>
+        <button id="mode-add-node" title="Clic en el lienzo para crear un nodo (tecla 2)"><span class="tool-icon">●</span> Agregar nodo con clic <kbd>2</kbd></button>
+        <button id="mode-add-edge" title="Clic en el nodo origen y luego en el destino (tecla 3)"><span class="tool-icon">→</span> Agregar arco con clic <kbd>3</kbd></button>
+      </div>
+      <div class="hint-line" id="mode-hint"></div>
+    </div>
+
+    <div class="block" id="selection-block">
+      <h2>Selección</h2>
+      <div id="panel-none" class="empty-hint">
+        Nada seleccionado. En modo <em>Seleccionar</em>, arrastra un nodo para moverlo o haz clic en un nodo o arco para editarlo. Doble clic sobre un nodo lo renombra; doble clic sobre un arco edita su peso.
+      </div>
+      <div id="panel-node" class="hidden">
+        <div class="selection-title" id="node-title">Nodo</div>
+        <div class="selection-sub" id="node-sub">Nodo de la red.</div>
+        <div class="tool-row">
+          <button class="accent-btn hidden" id="btn-routes-from"><span class="tool-icon">◎</span> Ver caminos desde este nodo</button>
+          <button id="btn-rename-node"><span class="tool-icon">✎</span> Renombrar nodo</button>
+          <button class="danger-btn" id="btn-delete-node"><span class="tool-icon">✕</span> Eliminar nodo</button>
+        </div>
+      </div>
+      <div id="panel-edge" class="hidden">
+        <div class="selection-title" id="edge-title">Arco</div>
+        <div class="selection-sub">Modifica el peso del arco (número positivo).</div>
+        <label class="field-label" for="edge-weight-input">Peso</label>
+        <input type="number" id="edge-weight-input" step="any" min="0">
+        <div class="form-error" id="edge-weight-error"></div>
+        <div class="tool-row tool-row-spaced">
+          <button class="primary" id="btn-update-weight"><span class="tool-icon">↻</span> Actualizar peso</button>
+          <button id="btn-reverse-edge"><span class="tool-icon">⇄</span> Invertir sentido</button>
+          <button class="danger-btn" id="btn-delete-edge"><span class="tool-icon">✕</span> Eliminar arco</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="block">
+      <h2>Red</h2>
+      <label class="field-label" for="example-select">Redes de ejemplo y de prueba</label>
+      <div class="inline-form">
+        <select id="example-select"></select>
+        <button id="btn-load-example">Cargar</button>
+      </div>
+      <div class="tool-row tool-row-spaced">
+        <button id="btn-export"><span class="tool-icon">⭳</span> Descargar red (.json)</button>
+        <button id="btn-import"><span class="tool-icon">⭱</span> Cargar red (.json)</button>
+        <button id="btn-export-image"><span class="tool-icon">▣</span> Exportar imagen (.png)</button>
+        <input type="file" id="file-import" accept=".json,application/json" class="hidden" aria-label="Cargar red desde archivo JSON">
+        <button class="danger-btn" id="btn-clear"><span class="tool-icon">⟲</span> Limpiar red completa</button>
+      </div>
+    </div>
+
+    <div class="block">
+      <h2>Leyenda</h2>
+      <div class="legend">
+        <div class="legend-row"><span class="swatch dot node-dot"></span> Nodo de la red</div>
+        <div class="legend-row"><span class="swatch dot pivot-dot"></span> Nodo intermedio k (iteración actual)</div>
+        <div class="legend-row"><span class="swatch dot used-dot"></span> Nodo ya evaluado como intermedio</div>
+        <div class="legend-row"><span class="swatch dot origin-dot"></span> Origen de la consulta</div>
+        <div class="legend-row"><span class="swatch dot dest-dot"></span> Destino de la consulta</div>
+        <div class="legend-row"><span class="swatch edge-default-line"></span> Arco dirigido (flecha = sentido)</div>
+        <div class="legend-row"><span class="swatch edge-tree-line"></span> Camino mínimo desde el origen</div>
+        <div class="legend-row"><span class="swatch edge-focus-line"></span> Camino mínimo origen → destino</div>
+        <div class="legend-row"><span class="swatch edge-alt-line"></span> Camino alternativo de igual distancia</div>
+        <div class="legend-row"><span class="cell-sample pivot"></span> Fila / columna del nodo intermedio k</div>
+        <div class="legend-row"><span class="cell-sample changed"></span> Celda actualizada en la iteración</div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ================= ZONA CENTRAL: LIENZO + MATRICES ================= -->
+  <main id="main" class="mode-select">
+    <div class="canvas-wrap">
+      <svg id="canvas" viewBox="0 0 1000 560" preserveAspectRatio="xMidYMid meet">
+        <defs>
+          <pattern id="grid" width="28" height="28" patternUnits="userSpaceOnUse">
+            <path d="M 28 0 L 0 0 0 28" fill="none" stroke="#E9E4D8" stroke-width="1"/>
+          </pattern>
+          <pattern id="grid-major" width="140" height="140" patternUnits="userSpaceOnUse">
+            <rect width="140" height="140" fill="url(#grid)"/>
+            <path d="M 140 0 L 0 0 0 140" fill="none" stroke="#DDD6C6" stroke-width="1.2"/>
+          </pattern>
+        </defs>
+        <rect id="canvas-bg" width="1000" height="560" fill="url(#grid-major)"/>
+        <g id="edges-layer"></g>
+        <g id="nodes-layer"></g>
+      </svg>
+      <div class="empty-canvas-hint" id="empty-hint">
+        Red vacía — ingresa nodos y arcos con los formularios del panel izquierdo,<br>
+        usa las herramientas del lienzo, o carga una red de ejemplo.
+      </div>
+      <div class="canvas-banner hidden" id="canvas-banner"></div>
+    </div>
+
+    <section class="matrix-panel" id="matrix-panel">
+      <div class="matrix-head">
+        <div class="tabs" role="tablist">
+          <button class="tab active" data-view="current" role="tab">Iteración actual</button>
+          <button class="tab" data-view="all" role="tab">Todas las iteraciones</button>
+          <button class="tab" data-view="pairs" role="tab">Caminos de todos los pares</button>
+        </div>
+        <span class="matrix-title" id="matrix-title">Matrices</span>
+        <div class="matrix-actions">
+          <button id="btn-grow-matrices" class="small-btn" title="Ampliar o reducir el panel">⤢ Ampliar</button>
+          <button id="btn-toggle-matrices" class="small-btn" title="Mostrar u ocultar el panel">▾ Ocultar</button>
+        </div>
+      </div>
+      <div class="matrix-body" id="matrix-body"></div>
+    </section>
+  </main>
+
+  <!-- ================= PANEL DERECHO: ALGORITMO ================= -->
+  <aside class="right">
+    <div class="block">
+      <h2>Algoritmo de Floyd-Warshall</h2>
+      <div class="checkbox-row">
+        <input type="checkbox" id="chk-steps" checked>
+        <label for="chk-steps">Mostrar procedimiento iteración por iteración</label>
+      </div>
+      <div class="tool-row">
+        <button class="primary" id="btn-run"><span class="tool-icon">▶</span> Ejecutar Floyd-Warshall</button>
+        <button id="btn-reset-result" class="hidden"><span class="tool-icon">⟲</span> Volver a la red original</button>
+      </div>
+      <div id="status-area" class="status-area"></div>
+    </div>
+
+    <div class="block hidden" id="stepper-block">
+      <h2>Procedimiento iterativo</h2>
+      <div class="stepper">
+        <button id="step-first" class="icon-btn" title="Matrices iniciales (Inicio)">⏮</button>
+        <button id="step-prev" class="icon-btn" title="Iteración anterior (←)">◀</button>
+        <button id="step-play" class="icon-btn play" title="Reproducir / pausar (Espacio)">▶</button>
+        <button id="step-next" class="icon-btn" title="Iteración siguiente (→)">▶▏</button>
+        <button id="step-last" class="icon-btn" title="Resultado final (Fin)">⏭</button>
+      </div>
+      <input type="range" id="step-range" min="0" max="0" value="0" aria-label="Iteración de la ejecución">
+      <div class="step-counter" id="step-counter">Paso 0 / 0</div>
+      <div class="step-message" id="step-message"></div>
+    </div>
+
+    <div class="block hidden" id="query-block">
+      <h2>Consultar camino mínimo</h2>
+      <div class="query-grid">
+        <div>
+          <label class="field-label" for="query-origin">Origen</label>
+          <select id="query-origin"></select>
+        </div>
+        <div>
+          <label class="field-label" for="query-dest">Destino</label>
+          <select id="query-dest"></select>
+        </div>
+      </div>
+      <div class="hint-line">También puedes hacer clic en una celda de la matriz de distancias, o en dos nodos del lienzo (origen y luego destino).</div>
+      <div id="query-result"></div>
+    </div>
+
+    <div class="block">
+      <h2>Estado de la red</h2>
+      <div class="stat-grid">
+        <div class="stat-cell"><span class="stat-label">Nodos</span><span class="stat-value" id="stat-nodes">0</span></div>
+        <div class="stat-cell"><span class="stat-label">Arcos</span><span class="stat-value" id="stat-edges">0</span></div>
+        <div class="stat-cell wide"><span class="stat-label">Pares (i, j) con camino</span><span class="stat-value" id="stat-pairs">—</span></div>
+      </div>
+      <div class="conn-badge"><span class="conn-dot" id="conn-dot"></span><span id="conn-text">Sin datos</span></div>
+    </div>
+  </aside>
+</div>
+
+<div class="modal-overlay hidden" id="modal-overlay">
+  <div class="modal-box">
+    <h3 id="modal-title">Peso del arco</h3>
+    <label class="field-label" for="modal-input" id="modal-label">Peso</label>
+    <input type="number" id="modal-input" step="any" autocomplete="off">
+    <div class="form-error" id="modal-error"></div>
+    <div class="modal-actions">
+      <button id="modal-cancel">Cancelar</button>
+      <button class="primary" id="modal-confirm">Confirmar</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay hidden" id="confirm-overlay">
+  <div class="modal-box">
+    <h3 id="confirm-title">Confirmar acción</h3>
+    <p id="confirm-message"></p>
+    <div class="modal-actions">
+      <button id="confirm-cancel">Cancelar</button>
+      <button class="danger-btn" id="confirm-ok">Confirmar</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast hidden" id="toast"></div>
+
+<script src="app.js"></script>
+</body>
+</html>

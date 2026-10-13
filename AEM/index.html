@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AEM · Constructor de Redes — Árbol de Expansión Mínima</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Roboto+Slab:wght@400;600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="app">
+  <header>
+    <div class="brand">
+      <h1>Constructor de Redes · AEM</h1>
+      <span class="tag">Árbol de Expansión Mínima</span>
+    </div>
+    <div class="header-course">Investigación de Operaciones — UTP<br>Docente: Bibiana Patricia Arias Villada</div>
+  </header>
+
+  <aside>
+    <div class="block">
+      <h2>Herramientas</h2>
+      <div class="tool-row">
+        <button id="mode-select" class="active" title="Seleccionar, mover, editar o eliminar"><span class="tool-icon">▤</span> Seleccionar / Mover</button>
+        <button id="mode-add-node" title="Clic en el lienzo para crear un nodo"><span class="tool-icon">●</span> Agregar nodo</button>
+        <button id="mode-add-edge" title="Clic en dos nodos para unirlos"><span class="tool-icon">/</span> Agregar arco</button>
+      </div>
+    </div>
+
+    <div class="block" id="selection-block">
+      <h2>Selección</h2>
+      <div id="panel-none" class="empty-hint">
+        Nada seleccionado. Elige una herramienta arriba y trabaja directamente sobre el lienzo. En modo <em>Seleccionar</em>, arrastra un nodo para moverlo, o haz clic en un nodo o arco para editarlo.
+      </div>
+      <div id="panel-node" class="hidden">
+        <div class="selection-title" id="node-title">Nodo</div>
+        <div class="selection-sub">Nodo de la red no dirigida.</div>
+        <button class="danger-btn" id="btn-delete-node"><span class="tool-icon">✕</span> Eliminar nodo</button>
+      </div>
+      <div id="panel-edge" class="hidden">
+        <div class="selection-title" id="edge-title">Arco</div>
+        <div class="selection-sub">Ajusta el valor/peso del arco.</div>
+        <label class="field-label" for="edge-weight-input">Valor / peso</label>
+        <input type="number" id="edge-weight-input" step="any">
+        <div class="modal-error" id="edge-weight-error"></div>
+        <div class="tool-row tool-row-spaced">
+          <button class="primary" id="btn-update-weight"><span class="tool-icon">↻</span> Actualizar peso</button>
+          <button class="danger-btn" id="btn-delete-edge"><span class="tool-icon">✕</span> Eliminar arco</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="block">
+      <h2>Algoritmo AEM</h2>
+      <div class="tool-row">
+        <button class="primary" id="btn-run"><span class="tool-icon">▶</span> Calcular árbol de expansión mínima</button>
+        <button id="btn-skip" class="hidden"><span class="tool-icon">⏭</span> Saltar animación</button>
+      </div>
+      <div class="checkbox-row">
+        <input type="checkbox" id="chk-steps" checked>
+        <label for="chk-steps">Mostrar paso a paso (algoritmo de Kruskal)</label>
+      </div>
+      <div id="result-area" class="result-area"></div>
+      <div id="log"></div>
+    </div>
+
+    <div class="block">
+      <h2>Estado de la red</h2>
+      <div class="stat-grid">
+        <div class="stat-cell"><span class="stat-label">Nodos</span><span class="stat-value" id="stat-nodes">0</span></div>
+        <div class="stat-cell"><span class="stat-label">Arcos</span><span class="stat-value" id="stat-edges">0</span></div>
+      </div>
+      <div class="conn-badge"><span class="conn-dot" id="conn-dot"></span><span id="conn-text">Sin datos</span></div>
+    </div>
+
+    <div class="block">
+      <h2>Leyenda</h2>
+      <div class="legend">
+        <div class="legend-row"><span class="swatch dot node-dot"></span> Nodo de la red</div>
+        <div class="legend-row"><span class="swatch edge-default-line"></span> Arco (no dirigido)</div>
+        <div class="legend-row"><span class="swatch edge-mst-line"></span> Arco seleccionado para el AEM</div>
+        <div class="legend-row"><span class="swatch edge-reject-line"></span> Arco descartado (forma ciclo)</div>
+        <div class="legend-row"><span class="swatch edge-current-line"></span> Arco en evaluación</div>
+      </div>
+    </div>
+
+    <div class="block">
+      <h2>Red</h2>
+      <div class="tool-row">
+        <button id="btn-example"><span class="tool-icon">✦</span> Cargar red de ejemplo</button>
+        <button id="btn-export"><span class="tool-icon">⭳</span> Descargar red (.json)</button>
+        <button id="btn-export-image"><span class="tool-icon">🖼</span> Exportar imagen (.png)</button>
+        <button id="btn-import"><span class="tool-icon">⭱</span> Cargar red (.json)</button>
+        <input type="file" id="file-import" accept=".json,application/json" class="hidden" title="Cargar red desde archivo JSON" aria-label="Cargar red desde archivo JSON">
+        <button class="danger-btn" id="btn-clear"><span class="tool-icon">⟲</span> Limpiar red completa</button>
+      </div>
+    </div>
+  </aside>
+
+  <main id="main" class="mode-select">
+    <svg id="canvas" viewBox="0 0 1000 650" preserveAspectRatio="xMidYMid meet">
+      <defs>
+        <pattern id="grid" width="28" height="28" patternUnits="userSpaceOnUse">
+          <path d="M 28 0 L 0 0 0 28" fill="none" stroke="var(--grid-line)" stroke-width="1"/>
+        </pattern>
+        <pattern id="grid-major" width="140" height="140" patternUnits="userSpaceOnUse">
+          <rect width="140" height="140" fill="url(#grid)"/>
+          <path d="M 140 0 L 0 0 0 140" fill="none" stroke="var(--grid-line)" stroke-width="1.4"/>
+        </pattern>
+      </defs>
+      <rect width="1000" height="650" fill="url(#grid-major)"/>
+      <g id="edges-layer"></g>
+      <g id="nodes-layer"></g>
+    </svg>
+    <div class="empty-canvas-hint" id="empty-hint">
+      Lienzo vacío — selecciona "Agregar nodo" y haz clic aquí para comenzar tu red.
+    </div>
+    <div class="cartouche">
+      <b>PROYECTO</b> — Algoritmo de Árbol de Expansión Mínima<br>
+      Investigación de Operaciones · Ing. de Sistemas y Computación<br>
+      Universidad Tecnológica de Pereira<br>
+      Fecha: <span id="cartouche-date"></span>
+    </div>
+  </main>
+</div>
+
+<div class="modal-overlay hidden" id="modal-overlay">
+  <div class="modal-box">
+    <h3 id="modal-title">Peso del arco</h3>
+    <label class="field-label" for="modal-input">Valor / peso</label>
+    <input type="number" id="modal-input" step="any" autocomplete="off">
+    <div class="modal-error" id="modal-error"></div>
+    <div class="modal-actions">
+      <button id="modal-cancel">Cancelar</button>
+      <button class="primary" id="modal-confirm">Confirmar</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay hidden" id="confirm-overlay">
+  <div class="modal-box">
+    <h3 id="confirm-title">Confirmar acción</h3>
+    <p id="confirm-message"></p>
+    <div class="modal-actions">
+      <button id="confirm-cancel">Cancelar</button>
+      <button class="danger-btn modal-confirm-button" id="confirm-ok">Confirmar</button>
+    </div>
+  </div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>

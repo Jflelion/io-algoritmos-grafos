@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dijkstra · Caminos Mínimos</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Roboto+Slab:wght@400;600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="app">
+  <header>
+    <div class="brand">
+      <h1>Constructor de Redes · Dijkstra</h1>
+      <span class="tag">Caminos mínimos desde un nodo origen</span>
+    </div>
+    <div class="header-course">Investigación de Operaciones — UTP<br>Docente: Bibiana Patricia Arias Villada</div>
+  </header>
+
+  <!-- ================= PANEL IZQUIERDO: CONSTRUCCIÓN ================= -->
+  <aside class="left">
+    <div class="block">
+      <h2>Herramientas</h2>
+      <div class="tool-row">
+        <button id="mode-select" class="active" title="Seleccionar, mover, editar o eliminar (tecla 1)"><span class="tool-icon">▤</span> Seleccionar / Mover <kbd>1</kbd></button>
+        <button id="mode-add-node" title="Clic en el lienzo para crear un nodo (tecla 2)"><span class="tool-icon">●</span> Agregar nodo <kbd>2</kbd></button>
+        <button id="mode-add-edge" title="Clic en dos nodos para unirlos (tecla 3)"><span class="tool-icon">/</span> Agregar arco <kbd>3</kbd></button>
+      </div>
+      <div class="hint-line" id="mode-hint"></div>
+    </div>
+
+    <div class="block">
+      <h2>Tipo de red</h2>
+      <div class="segmented" role="radiogroup" aria-label="Tipo de red">
+        <button id="type-undirected" class="seg active" role="radio" aria-checked="true">No dirigida</button>
+        <button id="type-directed" class="seg" role="radio" aria-checked="false">Dirigida</button>
+      </div>
+      <div class="hint-line" id="type-hint">Cada arco puede recorrerse en ambos sentidos.</div>
+    </div>
+
+    <div class="block" id="selection-block">
+      <h2>Selección</h2>
+      <div id="panel-none" class="empty-hint">
+        Nada seleccionado. En modo <em>Seleccionar</em>, arrastra un nodo para moverlo o haz clic en un nodo o arco para editarlo. Doble clic sobre un nodo lo renombra; doble clic sobre un arco edita su peso.
+      </div>
+      <div id="panel-node" class="hidden">
+        <div class="selection-title" id="node-title">Nodo</div>
+        <div class="selection-sub" id="node-sub">Nodo de la red.</div>
+        <div id="node-path" class="node-path hidden"></div>
+        <div class="tool-row">
+          <button class="origin-btn" id="btn-set-origin"><span class="tool-icon">◎</span> Establecer como origen</button>
+          <button id="btn-rename-node"><span class="tool-icon">✎</span> Renombrar nodo</button>
+          <button class="danger-btn" id="btn-delete-node"><span class="tool-icon">✕</span> Eliminar nodo</button>
+        </div>
+      </div>
+      <div id="panel-edge" class="hidden">
+        <div class="selection-title" id="edge-title">Arco</div>
+        <div class="selection-sub">Ajusta el valor/peso del arco (número ≥ 0).</div>
+        <label class="field-label" for="edge-weight-input">Valor / peso</label>
+        <input type="number" id="edge-weight-input" step="any" min="0">
+        <div class="modal-error" id="edge-weight-error"></div>
+        <div class="tool-row tool-row-spaced">
+          <button class="primary" id="btn-update-weight"><span class="tool-icon">↻</span> Actualizar peso</button>
+          <button id="btn-reverse-edge" class="hidden"><span class="tool-icon">⇄</span> Invertir sentido</button>
+          <button class="danger-btn" id="btn-delete-edge"><span class="tool-icon">✕</span> Eliminar arco</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="block">
+      <h2>Red</h2>
+      <div class="tool-row">
+        <button id="btn-example"><span class="tool-icon">✦</span> Ejemplo: red no dirigida</button>
+        <button id="btn-example-directed"><span class="tool-icon">✦</span> Ejemplo: red dirigida</button>
+        <button id="btn-export"><span class="tool-icon">⭳</span> Descargar red (.json)</button>
+        <button id="btn-import"><span class="tool-icon">⭱</span> Cargar red (.json)</button>
+        <button id="btn-export-image"><span class="tool-icon">▣</span> Exportar imagen (.png)</button>
+        <input type="file" id="file-import" accept=".json,application/json" class="hidden" aria-label="Cargar red desde archivo JSON">
+        <button class="danger-btn" id="btn-clear"><span class="tool-icon">⟲</span> Limpiar red completa</button>
+      </div>
+    </div>
+
+    <div class="block">
+      <h2>Leyenda</h2>
+      <div class="legend">
+        <div class="legend-row"><span class="swatch dot node-dot"></span> Nodo de la red</div>
+        <div class="legend-row"><span class="swatch dot origin-dot"></span> Nodo origen</div>
+        <div class="legend-row"><span class="swatch dot perm-dot"></span> Nodo con etiqueta permanente</div>
+        <div class="legend-row"><span class="swatch dot unreach-dot"></span> Nodo inalcanzable (∞)</div>
+        <div class="legend-row"><span class="swatch edge-default-line"></span> Arco de la red</div>
+        <div class="legend-row"><span class="swatch edge-tree-line"></span> Arco de un camino mínimo</div>
+        <div class="legend-row"><span class="swatch edge-focus-line"></span> Camino al destino elegido</div>
+        <div class="legend-row"><span class="swatch edge-current-line"></span> Arco en evaluación</div>
+        <div class="legend-row"><span class="label-sample perm">[7, B]</span> Etiqueta permanente (distancia, predecesor)</div>
+        <div class="legend-row"><span class="label-sample temp">(9, C)</span> Etiqueta temporal</div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ================= LIENZO ================= -->
+  <main id="main" class="mode-select">
+    <svg id="canvas" viewBox="0 0 1000 650" preserveAspectRatio="xMidYMid meet">
+      <defs>
+        <pattern id="grid" width="28" height="28" patternUnits="userSpaceOnUse">
+          <path d="M 28 0 L 0 0 0 28" fill="none" stroke="#242741" stroke-width="1"/>
+        </pattern>
+        <pattern id="grid-major" width="140" height="140" patternUnits="userSpaceOnUse">
+          <rect width="140" height="140" fill="url(#grid)"/>
+          <path d="M 140 0 L 0 0 0 140" fill="none" stroke="#242741" stroke-width="1.4"/>
+        </pattern>
+      </defs>
+      <rect id="canvas-bg" width="1000" height="650" fill="url(#grid-major)"/>
+      <g id="edges-layer"></g>
+      <g id="nodes-layer"></g>
+    </svg>
+    <div class="empty-canvas-hint" id="empty-hint">
+      Lienzo vacío — selecciona <b>Agregar nodo</b> y haz clic aquí para comenzar tu red,<br>
+      o carga una red de ejemplo desde el panel izquierdo.
+    </div>
+    <div class="canvas-banner hidden" id="canvas-banner"></div>
+
+    <div class="iter-drawer hidden" id="iter-drawer">
+      <div class="iter-head">
+        <span>Tabla de iteraciones de Dijkstra</span>
+        <button id="btn-close-iter" class="icon-btn" title="Cerrar tabla">✕</button>
+      </div>
+      <div class="iter-scroll"><table id="iter-table"></table></div>
+      <div class="iter-foot">( d, p ) etiqueta temporal · <b>[ d, p ]</b> etiqueta que se vuelve permanente en esa iteración · — ya era permanente · ∞ sin alcanzar</div>
+    </div>
+
+    <div class="cartouche" id="cartouche">
+      <b>PROYECTO</b> — Algoritmo de Dijkstra · Caminos Mínimos<br>
+      Investigación de Operaciones · Ing. de Sistemas y Computación<br>
+      Universidad Tecnológica de Pereira<br>
+      Fecha: <span id="cartouche-date"></span>
+    </div>
+  </main>
+
+  <!-- ================= PANEL DERECHO: ALGORITMO ================= -->
+  <aside class="right">
+    <div class="block">
+      <h2>Algoritmo de Dijkstra</h2>
+      <label class="field-label" for="origin-select">Nodo de origen</label>
+      <select id="origin-select"></select>
+      <div class="checkbox-row">
+        <input type="checkbox" id="chk-steps" checked>
+        <label for="chk-steps">Mostrar ejecución paso a paso</label>
+      </div>
+      <div class="tool-row">
+        <button class="primary" id="btn-run"><span class="tool-icon">▶</span> Ejecutar Dijkstra</button>
+        <button id="btn-reset-result" class="hidden"><span class="tool-icon">⟲</span> Volver a la red original</button>
+      </div>
+      <div id="status-area" class="status-area"></div>
+    </div>
+
+    <div class="block hidden" id="stepper-block">
+      <h2>Ejecución paso a paso</h2>
+      <div class="stepper">
+        <button id="step-first" class="icon-btn" title="Primer paso (Inicio)">⏮</button>
+        <button id="step-prev" class="icon-btn" title="Paso anterior (←)">◀</button>
+        <button id="step-play" class="icon-btn play" title="Reproducir / pausar (Espacio)">▶</button>
+        <button id="step-next" class="icon-btn" title="Paso siguiente (→)">▶▏</button>
+        <button id="step-last" class="icon-btn" title="Resultado final (Fin)">⏭</button>
+      </div>
+      <input type="range" id="step-range" min="0" max="0" value="0" aria-label="Paso de la ejecución">
+      <div class="step-counter" id="step-counter">Paso 0 / 0</div>
+      <div class="step-message" id="step-message"></div>
+      <button id="btn-iter-table"><span class="tool-icon">▦</span> Ver tabla de iteraciones</button>
+    </div>
+
+    <div class="block hidden" id="results-block">
+      <h2>Distancias y caminos mínimos</h2>
+      <div class="hint-line">Haz clic en una fila (o en un nodo del lienzo) para resaltar su recorrido.</div>
+      <table class="results" id="results-table">
+        <thead><tr><th>Nodo</th><th>Distancia</th><th>Recorrido desde el origen</th></tr></thead>
+        <tbody></tbody>
+      </table>
+      <div id="focus-detail" class="focus-detail hidden"></div>
+    </div>
+
+    <div class="block">
+      <h2>Estado de la red</h2>
+      <div class="stat-grid">
+        <div class="stat-cell"><span class="stat-label">Nodos</span><span class="stat-value" id="stat-nodes">0</span></div>
+        <div class="stat-cell"><span class="stat-label">Arcos</span><span class="stat-value" id="stat-edges">0</span></div>
+        <div class="stat-cell"><span class="stat-label">Origen</span><span class="stat-value" id="stat-origin">—</span></div>
+        <div class="stat-cell"><span class="stat-label">Tipo</span><span class="stat-value small" id="stat-type">No dirigida</span></div>
+      </div>
+      <div class="conn-badge"><span class="conn-dot" id="conn-dot"></span><span id="conn-text">Sin datos</span></div>
+    </div>
+  </aside>
+</div>
+
+<div class="modal-overlay hidden" id="modal-overlay">
+  <div class="modal-box">
+    <h3 id="modal-title">Peso del arco</h3>
+    <label class="field-label" for="modal-input" id="modal-label">Valor / peso</label>
+    <input type="number" id="modal-input" step="any" min="0" autocomplete="off">
+    <div class="modal-error" id="modal-error"></div>
+    <div class="modal-actions">
+      <button id="modal-cancel">Cancelar</button>
+      <button class="primary" id="modal-confirm">Confirmar</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay hidden" id="confirm-overlay">
+  <div class="modal-box">
+    <h3 id="confirm-title">Confirmar acción</h3>
+    <p id="confirm-message"></p>
+    <div class="modal-actions">
+      <button id="confirm-cancel">Cancelar</button>
+      <button class="danger-btn modal-confirm-button" id="confirm-ok">Confirmar</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast hidden" id="toast"></div>
+
+<script src="app.js"></script>
+</body>
+</html>
